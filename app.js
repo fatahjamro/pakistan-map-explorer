@@ -27,76 +27,6 @@ map.getPane('districtsPane').style.zIndex = 401;
 map.getPane('provincesPane').style.zIndex = 402;
 map.getPane('riversPane').style.zIndex = 430;
 map.getPane('roadsPane').style.zIndex = 440;
-map.getPane('roadsPane').style.pointerEvents = 'none';
-
-// Setup SVG Polygon Mask for Roads Pane to strictly clip roads inside Pakistan's boundary
-const clipSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-clipSvg.setAttribute('style', 'position: absolute; width: 0; height: 0; pointer-events: none;');
-clipSvg.innerHTML = `
-    <defs>
-        <clipPath id="pakistan-roads-clip" clipPathUnits="userSpaceOnUse">
-            <path id="pakistan-roads-clip-path"></path>
-        </clipPath>
-    </defs>
-`;
-document.body.appendChild(clipSvg);
-
-const roadsPaneEl = map.getPane('roadsPane');
-if (roadsPaneEl) {
-    roadsPaneEl.style.clipPath = 'url(#pakistan-roads-clip)';
-    roadsPaneEl.style.webkitClipPath = 'url(#pakistan-roads-clip)';
-}
-
-let cachedBoundaryGeoJSON = null;
-async function updatePakistanClipPath() {
-    if (!cachedBoundaryGeoJSON) {
-        try {
-            const res = await fetch('data/pakistan_boundary.geojson');
-            cachedBoundaryGeoJSON = await res.json();
-        } catch (e) {
-            console.error('Error fetching boundary geojson for clipping', e);
-            return;
-        }
-    }
-    
-    const clipPathEl = document.getElementById('pakistan-roads-clip-path');
-    if (!clipPathEl || !cachedBoundaryGeoJSON) return;
-    
-    let pathD = '';
-    const features = cachedBoundaryGeoJSON.features || [cachedBoundaryGeoJSON];
-    
-    features.forEach(feature => {
-        const geom = feature.geometry;
-        if (!geom) return;
-        
-        const type = geom.type;
-        const coords = geom.coordinates;
-        
-        const processPolygon = (polyCoords) => {
-            polyCoords.forEach(ring => {
-                let ringStr = '';
-                ring.forEach((coord, index) => {
-                    // lng, lat
-                    const point = map.latLngToLayerPoint([coord[1], coord[0]]);
-                    const prefix = index === 0 ? 'M' : 'L';
-                    ringStr += `${prefix}${point.x.toFixed(1)},${point.y.toFixed(1)} `;
-                });
-                ringStr += 'Z ';
-                pathD += ringStr;
-            });
-        };
-        
-        if (type === 'Polygon') {
-            processPolygon(coords);
-        } else if (type === 'MultiPolygon') {
-            coords.forEach(processPolygon);
-        }
-    });
-    
-    clipPathEl.setAttribute('d', pathD);
-}
-
-map.on('move moveend zoomend viewreset resize', updatePakistanClipPath);
 
 L.control.zoom({
     position: 'bottomright'
@@ -593,18 +523,44 @@ toggleRivers.addEventListener('change', async (e) => {
 let roadsLayer = null;
 const toggleRoads = document.getElementById('toggle-roads');
 if (toggleRoads) {
-    toggleRoads.addEventListener('change', (e) => {
+    toggleRoads.addEventListener('change', async (e) => {
         if (e.target.checked) {
             if (!roadsLayer) {
-                roadsLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}', {
-                    maxZoom: 20,
-                    pane: 'roadsPane',
-                    opacity: 0.85,
-                    crossOrigin: true
-                });
+                loadingOverlay.classList.remove('hidden');
+                try {
+                    const response = await fetch('data/roads.geojson');
+                    if (!response.ok) throw new Error('Error loading roads');
+                    const data = await response.json();
+                    
+                    roadsLayer = L.geoJSON(data, {
+                        pane: 'roadsPane',
+                        style: function (feature) {
+                            const isMotorway = feature.properties.type === 'Motorway';
+                            return {
+                                color: isMotorway ? '#fbbf24' : '#f97316', // High contrast Amber Yellow for Motorways, Orange for Highways
+                                weight: isMotorway ? 3.2 : 2.2,
+                                dashArray: isMotorway ? '6, 4' : null,
+                                opacity: 0.95
+                            };
+                        },
+                        onEachFeature: (feature, layer) => {
+                            if (feature.properties && feature.properties.name) {
+                                layer.bindTooltip(`🛣️ ${feature.properties.name}`, {
+                                    sticky: true,
+                                    direction: 'auto',
+                                    className: 'custom-tooltip'
+                                });
+                            }
+                        }
+                    });
+                } catch (err) {
+                    console.error(err);
+                    e.target.checked = false;
+                } finally {
+                    loadingOverlay.classList.add('hidden');
+                }
             }
-            map.addLayer(roadsLayer);
-            updatePakistanClipPath();
+            if (roadsLayer) map.addLayer(roadsLayer);
         } else {
             if (roadsLayer && map.hasLayer(roadsLayer)) {
                 map.removeLayer(roadsLayer);
