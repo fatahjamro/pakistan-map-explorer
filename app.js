@@ -480,10 +480,10 @@ async function updateLayers() {
             const data = await response.json();
             boundaryLayer = L.geoJSON(data, {
                 style: {
-                    color: '#10b981', // Pakistan Green/emerald
-                    weight: 2.0,
+                    color: '#ffffff', // Crisp bright white border matching Tehsil outlines
+                    weight: 2.2,
                     fill: false,
-                    opacity: 0.9,
+                    opacity: 0.95,
                     interactive: false
                 }
             });
@@ -637,10 +637,11 @@ if (toggleRoads) {
         if (e.target.checked) {
             await ensureBoundaryLoaded();
             if (!roadsLayer) {
-                roadsLayer = new BoundedTileLayer('https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}', {
-                    maxZoom: 20,
+                roadsLayer = new BoundedTileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {
+                    maxZoom: 19,
                     pane: 'roadsPane',
-                    opacity: 1.0
+                    opacity: 0.9,
+                    crossOrigin: true
                 });
             }
             map.addLayer(roadsLayer);
