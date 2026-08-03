@@ -716,6 +716,16 @@ document.getElementById('layer-tehsils').addEventListener('change', updateLayers
 // Init
 updateLayers();
 
+function escapeXml(unsafe) {
+    if (!unsafe) return '';
+    return String(unsafe)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+}
+
 // PowerPoint & Vector Graphics Compatible Standalone SVG Generator
 function generatePowerPointSvg(singleFeature) {
     const active = getActiveLayer() || 'provinces';
@@ -779,6 +789,7 @@ function generatePowerPointSvg(singleFeature) {
 
     features.forEach(f => {
         const name = getRegionName(f);
+        const safeName = escapeXml(name);
         const color = getFeatureColor(f);
         const id = name.replace(/[^a-zA-Z0-9]/g, '_');
         
@@ -799,8 +810,8 @@ function generatePowerPointSvg(singleFeature) {
         if (geom.type === 'Polygon') processPolygon(geom.coordinates);
         else if (geom.type === 'MultiPolygon') geom.coordinates.forEach(processPolygon);
 
-        svgContent += `    <path id="${id}" data-name="${name}" class="region-shape" d="${pathD}" fill="${color}" fill-opacity="0.55" stroke="#ffffff" stroke-width="1.2" stroke-opacity="0.9">\n`;
-        svgContent += `      <title>${name}</title>\n`;
+        svgContent += `    <path id="${id}" data-name="${safeName}" class="region-shape" d="${pathD}" fill="${color}" fill-opacity="0.55" stroke="#ffffff" stroke-width="1.2" stroke-opacity="0.9">\n`;
+        svgContent += `      <title>${safeName}</title>\n`;
         svgContent += `    </path>\n`;
     });
 
