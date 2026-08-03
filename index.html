@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Map of Pakistan</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <link rel="stylesheet" href="style.css">
+    <!-- dom-to-image -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"></script>
+</head>
+<body>
+    <div id="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <header>
+                <h1>Pakistan Map Explorer</h1>
+                <p>Interactive administrative boundaries</p>
+            </header>
+
+            <section class="controls">
+                <h3>View Level</h3>
+                <div class="layer-checkboxes">
+                    <label class="toggle-container">
+                        <input type="checkbox" id="layer-provinces" checked>
+                        <span class="checkmark"></span>
+                        Show Provinces
+                    </label>
+                    <label class="toggle-container">
+                        <input type="checkbox" id="layer-districts">
+                        <span class="checkmark"></span>
+                        Show Districts
+                    </label>
+                    <label class="toggle-container">
+                        <input type="checkbox" id="layer-tehsils">
+                        <span class="checkmark"></span>
+                        Show Tehsils
+                    </label>
+                </div>
+            </section>
+
+            <section class="controls">
+                <h3>Search Region</h3>
+                <input type="text" id="region-search" list="region-list" placeholder="Search province, district, tehsil..." autocomplete="off">
+                <datalist id="region-list"></datalist>
+            </section>
+
+            <section class="controls">
+                <h3>Base Map</h3>
+                <select id="basemap-select" class="basemap-dropdown">
+                    <option value="none">None (Solid Dark)</option>
+                    <option value="dark" selected>Dark Map (CartoDB)</option>
+                    <option value="satellite">Satellite Map (Esri)</option>
+                </select>
+            </section>
+
+            <section class="controls overlays">
+                <h3>Overlays</h3>
+                <label class="toggle-container">
+                    <input type="checkbox" id="toggle-population">
+                    <span class="checkmark"></span>
+                    Show 2023 Population
+                </label>
+                <label class="toggle-container">
+                    <input type="checkbox" id="toggle-capitals">
+                    <span class="checkmark"></span>
+                    Show Capitals
+                </label>
+                <label class="toggle-container">
+                    <input type="checkbox" id="toggle-rivers">
+                    <span class="checkmark"></span>
+                    Show Rivers
+                </label>
+            </section>
+
+            <section class="info-panel" id="info-panel">
+                <h3>Region Information</h3>
+                <div id="region-details">Hover over a region to see details.</div>
+            </section>
+
+            <section class="downloads">
+                <h3>Export Map</h3>
+                <button id="export-png" class="download-link" style="width: 100%; border: none; cursor: pointer; text-align: left;">Download Map as Image (PNG)</button>
+                <button id="export-svg" class="download-link" style="width: 100%; border: none; cursor: pointer; text-align: left;">Download Map as Vector (SVG)</button>
+                
+                <h3 style="margin-top: 20px;">Download Data</h3>
+                <a href="data/provinces.geojson" download class="download-link">Download Provinces (GeoJSON)</a>
+                <a href="data/districts.geojson" download class="download-link">Download Districts (GeoJSON)</a>
+                <a href="data/tehsils.geojson" download class="download-link">Download Tehsils (GeoJSON)</a>
+            </section>
+            
+            <footer>
+                <p>Data provided by geoBoundaries and GADM</p>
+            </footer>
+        </aside>
+
+        <!-- Map Container -->
+        <main class="map-wrapper">
+            <div id="map"></div>
+            <!-- Loading Overlay -->
+            <div id="loading" class="loading-overlay hidden">
+                <div class="spinner"></div>
+                <p>Loading Map Data...</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="app.js"></script>
+</body>
+</html>

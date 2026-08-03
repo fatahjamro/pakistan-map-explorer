@@ -1,0 +1,317 @@
+:root {
+    --primary-color: #046A38; /* Pakistan Green */
+    --primary-light: #068949;
+    --bg-dark: #1e293b;
+    --bg-panel: #0f172a;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --border-color: #334155;
+    --hover-bg: #1e293b;
+    --map-bg: #0b1120;
+    --accent: #10b981;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body, html {
+    height: 100%;
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    overflow: hidden;
+}
+
+#app-container {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* Sidebar Styling */
+.sidebar {
+    width: 350px;
+    background-color: var(--bg-panel);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    z-index: 1000; /* Above map */
+    box-shadow: 4px 0 15px rgba(0,0,0,0.3);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+header h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 0.25rem;
+}
+
+header p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 2rem;
+}
+
+section {
+    margin-bottom: 2rem;
+}
+
+h3 {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+}
+
+/* Controls */
+.layer-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.layer-btn {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+    font-weight: 600;
+}
+
+.layer-btn:hover {
+    background: var(--hover-bg);
+    border-color: var(--text-muted);
+}
+
+.layer-btn.active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 12px rgba(4, 106, 56, 0.4);
+}
+
+/* Overlays Toggle */
+.toggle-container {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 0.95rem;
+    color: var(--text-main);
+    user-select: none;
+    margin-bottom: 0.5rem;
+}
+
+.toggle-container input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.checkmark {
+    height: 20px;
+    width: 20px;
+    background-color: var(--hover-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    margin-right: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.toggle-container:hover input ~ .checkmark {
+    background-color: var(--border-color);
+}
+
+.toggle-container input:checked ~ .checkmark {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.checkmark:after {
+    content: "";
+    display: none;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+.toggle-container input:checked ~ .checkmark:after {
+    display: block;
+}
+
+/* Info Panel */
+.info-panel {
+    background: var(--hover-bg);
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    min-height: 120px;
+}
+
+#region-details {
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.region-name {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+}
+
+/* Downloads */
+.downloads {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.download-link {
+    display: block;
+    background: var(--hover-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.download-link:hover {
+    background: var(--border-color);
+    color: #fff;
+}
+
+footer {
+    margin-top: auto;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+/* Map Wrapper */
+.map-wrapper {
+    flex-grow: 1;
+    position: relative;
+    background-color: var(--map-bg);
+}
+
+#map {
+    height: 100%;
+    width: 100%;
+    background-color: var(--map-bg);
+}
+
+/* Customizing Leaflet for dark mode */
+.leaflet-container {
+    background: var(--map-bg);
+}
+
+/* Loading Overlay */
+.loading-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(11, 17, 32, 0.8);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    backdrop-filter: blur(4px);
+    transition: opacity 0.3s ease;
+}
+
+.loading-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--border-color);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Leaflet Tooltip customization */
+.leaflet-tooltip {
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    padding: 8px 12px;
+    backdrop-filter: blur(6px);
+}
+.leaflet-tooltip-top:before {
+    border-top-color: var(--border-color);
+}
+.leaflet-tooltip-bottom:before {
+    border-bottom-color: var(--border-color);
+}
+.leaflet-tooltip-left:before {
+    border-left-color: var(--border-color);
+}
+.leaflet-tooltip-right:before {
+    border-right-color: var(--border-color);
+}
+
+/* Basemap Select Styling */
+.basemap-dropdown {
+    width: 100%;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.3s ease;
+}
+
+.basemap-dropdown:focus {
+    border-color: var(--accent);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.basemap-dropdown option {
+    background: var(--bg-panel);
+    color: var(--text-main);
+}
+
+/* Inactive Pane Path Interactivity Pass-Through */
+.leaflet-provinces-pane.inactive-pane path,
+.leaflet-districts-pane.inactive-pane path,
+.leaflet-tehsils-pane.inactive-pane path {
+    pointer-events: none !important;
+}
