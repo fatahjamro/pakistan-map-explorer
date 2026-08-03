@@ -476,21 +476,23 @@ toggleRivers.addEventListener('change', async (e) => {
                 riversLayer = L.geoJSON(data, {
                     filter: function(feature) {
                         if (!feature.properties || !feature.properties.NAM) return false;
-                        const allowedRivers = ['INDUS', 'JHELUM', 'CHENAB', 'RAVI', 'SUTLEJ'];
-                        return allowedRivers.includes(feature.properties.NAM.toUpperCase());
+                        const name = feature.properties.NAM.toUpperCase();
+                        if (name === 'UNK') return false;
+                        const allowedRivers = ['INDUS', 'JHELUM', 'CHENAB', 'RAVI', 'SUTLEJ', 'KABUL', 'SWAT', 'SOAN', 'HINGOL'];
+                        return allowedRivers.some(r => name.includes(r));
                     },
                     style: function (feature) {
-                        // Make River Indus thicker
-                        const isIndus = feature.properties && feature.properties.NAM && feature.properties.NAM.toUpperCase() === 'INDUS';
+                        const name = (feature.properties && feature.properties.NAM) ? feature.properties.NAM.toUpperCase() : '';
+                        const isIndus = name.includes('INDUS');
                         return {
-                            color: '#3b82f6', // Water Blue
-                            weight: isIndus ? 3.5 : 1.2,
-                            opacity: isIndus ? 0.9 : 0.6
+                            color: '#38bdf8', // Bright Water Blue
+                            weight: isIndus ? 3.5 : 2.0,
+                            opacity: isIndus ? 0.95 : 0.8
                         };
                     },
                     onEachFeature: (feature, layer) => {
                         if (feature.properties && feature.properties.NAM && feature.properties.NAM !== 'UNK') {
-                            layer.bindTooltip(feature.properties.NAM + ' River', {
+                            layer.bindTooltip(`🌊 ${feature.properties.NAM} River`, {
                                 sticky: true,
                                 direction: 'auto',
                                 className: 'custom-tooltip'
@@ -512,6 +514,54 @@ toggleRivers.addEventListener('change', async (e) => {
         }
     }
 });
+
+let roadsLayer = null;
+const toggleRoads = document.getElementById('toggle-roads');
+if (toggleRoads) {
+    toggleRoads.addEventListener('change', async (e) => {
+        if (e.target.checked) {
+            if (!roadsLayer) {
+                loadingOverlay.classList.remove('hidden');
+                try {
+                    const response = await fetch('data/roads.geojson');
+                    if (!response.ok) throw new Error('Error loading roads');
+                    const data = await response.json();
+                    
+                    roadsLayer = L.geoJSON(data, {
+                        style: function (feature) {
+                            const isMotorway = feature.properties.type === 'Motorway';
+                            return {
+                                color: isMotorway ? '#f59e0b' : '#f97316', // Amber for Motorways, Orange for Highways
+                                weight: isMotorway ? 2.5 : 1.8,
+                                dashArray: isMotorway ? '6, 4' : null,
+                                opacity: 0.9
+                            };
+                        },
+                        onEachFeature: (feature, layer) => {
+                            if (feature.properties && feature.properties.name) {
+                                layer.bindTooltip(`🛣️ ${feature.properties.name}`, {
+                                    sticky: true,
+                                    direction: 'auto',
+                                    className: 'custom-tooltip'
+                                });
+                            }
+                        }
+                    });
+                } catch (err) {
+                    console.error(err);
+                    e.target.checked = false;
+                } finally {
+                    loadingOverlay.classList.add('hidden');
+                }
+            }
+            if (roadsLayer) map.addLayer(roadsLayer);
+        } else {
+            if (roadsLayer && map.hasLayer(roadsLayer)) {
+                map.removeLayer(roadsLayer);
+            }
+        }
+    });
+}
 
 // Search Feature
 document.getElementById('region-search').addEventListener('change', (e) => {
