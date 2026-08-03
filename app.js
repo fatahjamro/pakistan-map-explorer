@@ -522,6 +522,7 @@ async function updateLayers() {
     // Update interactivity immediately and also defer slightly to ensure Leaflet's SVG DOM elements are ready
     updateInteractivity();
     setTimeout(updateInteractivity, 50);
+    updateRegionNamesLabels();
 }
 
 // Overlays Logic
@@ -639,6 +640,41 @@ toggleRivers.addEventListener('change', async (e) => {
         }
     }
 });
+
+let namesLayerGroup = L.layerGroup().addTo(map);
+
+function updateRegionNamesLabels() {
+    namesLayerGroup.clearLayers();
+    const toggleNames = document.getElementById('toggle-names');
+    if (!toggleNames || !toggleNames.checked) return;
+
+    const active = getActiveLayer();
+    if (!active || !geojsonLayers[active]) return;
+
+    geojsonLayers[active].eachLayer(layer => {
+        const bounds = layer.getBounds();
+        if (bounds && bounds.isValid()) {
+            const center = bounds.getCenter();
+            const name = getRegionName(layer.feature);
+            
+            const marker = L.marker(center, {
+                icon: L.divIcon({
+                    className: 'region-map-label',
+                    html: `<div>${name}</div>`,
+                    iconSize: [120, 20],
+                    iconAnchor: [60, 10]
+                }),
+                interactive: false
+            });
+            namesLayerGroup.addLayer(marker);
+        }
+    });
+}
+
+const toggleNames = document.getElementById('toggle-names');
+if (toggleNames) {
+    toggleNames.addEventListener('change', updateRegionNamesLabels);
+}
 
 let roadsLayer = null;
 const toggleRoads = document.getElementById('toggle-roads');
@@ -787,6 +823,8 @@ function generatePowerPointSvg(singleFeature) {
     svgContent += `  <rect width="100%" height="100%" fill="#090d16" />\n`;
     svgContent += `  <g id="${layerTitle.replace(/[^a-zA-Z0-9]/g, '_')}">\n`;
 
+    const showNames = document.getElementById('toggle-names') && document.getElementById('toggle-names').checked;
+
     features.forEach(f => {
         const name = getRegionName(f);
         const safeName = escapeXml(name);
@@ -813,6 +851,27 @@ function generatePowerPointSvg(singleFeature) {
         svgContent += `    <path id="${id}" data-name="${safeName}" class="region-shape" d="${pathD}" fill="${color}" fill-opacity="0.55" stroke="#ffffff" stroke-width="1.2" stroke-opacity="0.9">\n`;
         svgContent += `      <title>${safeName}</title>\n`;
         svgContent += `    </path>\n`;
+
+        if (showNames || singleFeature) {
+            let centerLng = 0, centerLat = 0, ptCount = 0;
+            const accumPts = (coords) => {
+                if (typeof coords[0] === 'number') {
+                    centerLng += coords[0];
+                    centerLat += coords[1];
+                    ptCount++;
+                } else {
+                    coords.forEach(accumPts);
+                }
+            };
+            accumPts(geom.coordinates);
+            if (ptCount > 0) {
+                centerLng /= ptCount;
+                centerLat /= ptCount;
+                const [cx, cy] = projectPt(centerLng, centerLat).split(',');
+                const fontSize = active === 'provinces' ? 14 : (active === 'districts' ? 10 : 8);
+                svgContent += `    <text x="${cx}" y="${cy}" font-family="Inter, sans-serif" font-size="${fontSize}px" font-weight="600" fill="#ffffff" text-anchor="middle" dominant-baseline="central">${safeName}</text>\n`;
+            }
+        }
     });
 
     if (!singleFeature && cachedData['pakistan_boundary']) {
