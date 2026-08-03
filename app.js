@@ -42,9 +42,11 @@ const satelliteTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/r
     crossOrigin: true
 });
 
-// Add default dark layer
-darkTileLayer.addTo(map);
-darkTileLayer.bringToBack();
+// Pre-fetch districts and tehsils in background for instant 0ms switching
+setTimeout(() => {
+    loadMapData('districts');
+    loadMapData('tehsils');
+}, 500);
 
 // State
 function getActiveLayer() {

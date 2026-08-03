@@ -33,12 +33,12 @@ body, html {
 
 /* Sidebar Styling */
 .sidebar {
-    width: 350px;
+    width: 330px;
     background-color: var(--bg-panel);
     border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
-    padding: 1.5rem;
+    padding: 0.85rem;
     z-index: 1000; /* Above map */
     box-shadow: 4px 0 15px rgba(0,0,0,0.3);
     overflow-y: auto;
@@ -46,44 +46,44 @@ body, html {
 }
 
 header h1 {
-    font-size: 1.5rem;
+    font-size: 1.35rem;
     font-weight: 700;
     color: var(--accent);
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.1rem;
 }
 
 header p {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: var(--text-muted);
-    margin-bottom: 2rem;
+    margin-bottom: 0.4rem;
 }
 
 section {
-    margin-bottom: 2rem;
+    margin-bottom: 0.65rem;
 }
 
 h3 {
-    font-size: 0.9rem;
+    font-size: 0.78rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--text-muted);
-    margin-bottom: 1rem;
+    margin-bottom: 0.35rem;
 }
 
 /* Controls */
 .layer-buttons {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.4rem;
 }
 
 .layer-btn {
     background: transparent;
     border: 1px solid var(--border-color);
     color: var(--text-main);
-    padding: 0.75rem 1rem;
-    border-radius: 8px;
-    font-size: 1rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
     cursor: pointer;
     transition: all 0.2s ease;
     text-align: left;
@@ -106,10 +106,10 @@ h3 {
     display: flex;
     align-items: center;
     cursor: pointer;
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     color: var(--text-main);
     user-select: none;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.3rem;
 }
 
 .toggle-container input {
@@ -121,12 +121,12 @@ h3 {
 }
 
 .checkmark {
-    height: 20px;
-    width: 20px;
+    height: 16px;
+    width: 16px;
     background-color: var(--hover-bg);
     border: 1px solid var(--border-color);
     border-radius: 4px;
-    margin-right: 10px;
+    margin-right: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -145,8 +145,8 @@ h3 {
 .checkmark:after {
     content: "";
     display: none;
-    width: 5px;
-    height: 10px;
+    width: 4px;
+    height: 8px;
     border: solid white;
     border-width: 0 2px 2px 0;
     transform: rotate(45deg);
@@ -159,29 +159,29 @@ h3 {
 /* Info Panel */
 .info-panel {
     background: var(--hover-bg);
-    padding: 1rem;
-    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
     border: 1px solid var(--border-color);
-    min-height: 120px;
+    min-height: 50px;
 }
 
 #region-details {
-    font-size: 1rem;
-    line-height: 1.5;
+    font-size: 0.85rem;
+    line-height: 1.35;
 }
 
 .region-name {
-    font-size: 1.25rem;
+    font-size: 1.05rem;
     font-weight: 700;
     color: var(--accent);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
 }
 
 /* Downloads */
 .downloads {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.35rem;
 }
 
 .download-link {
@@ -189,10 +189,10 @@ h3 {
     background: var(--hover-bg);
     border: 1px solid var(--border-color);
     color: var(--text-main);
-    padding: 0.75rem 1rem;
-    border-radius: 8px;
+    padding: 0.45rem 0.65rem;
+    border-radius: 6px;
     text-decoration: none;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     transition: all 0.2s ease;
     text-align: center;
 }
