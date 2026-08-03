@@ -527,10 +527,12 @@ if (toggleRoads) {
     toggleRoads.addEventListener('change', (e) => {
         if (e.target.checked) {
             if (!roadsLayer) {
+                const pakBounds = L.latLngBounds([[23.5, 60.8], [37.1, 77.8]]);
                 roadsLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}', {
                     maxZoom: 20,
                     pane: 'roadsPane',
                     opacity: 0.85,
+                    bounds: pakBounds,
                     crossOrigin: true
                 });
             }
