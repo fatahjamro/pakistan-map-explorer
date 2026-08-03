@@ -280,10 +280,14 @@ map.getPane('riversPane').style.zIndex = 480;
 map.getPane('roadsPane').style.zIndex = 500;
 map.getPane('roadsPane').style.pointerEvents = 'none';
 
-// Helper functions & state
+let currentSelectedFeature = null;
+let currentSelectedLayer = null;
 
 function highlightFeature(e) {
     const layer = e.target;
+    currentSelectedFeature = layer.feature;
+    currentSelectedLayer = layer;
+    
     layer.setStyle(getHoverStyle(layer.feature));
     
     // Update Info Panel (Keep clean & compact)
@@ -293,6 +297,10 @@ function highlightFeature(e) {
     regionDetails.innerHTML = `
         <div class="region-name">${name}</div>
         ${parent ? `<div><small style="color:var(--text-muted)">in ${parent}</small></div>` : ''}
+        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; gap: 6px;">
+            <button onclick="exportSingleRegion('png')" class="download-link" style="flex: 1; font-size: 0.72rem; padding: 4px; text-align: center; border: none; cursor: pointer; margin: 0;">Export PNG</button>
+            <button onclick="exportSingleRegion('svg')" class="download-link" style="flex: 1; font-size: 0.72rem; padding: 4px; text-align: center; border: none; cursor: pointer; margin: 0;">Export SVG</button>
+        </div>
     `;
 }
 
@@ -682,16 +690,20 @@ function highlightAndZoomTo(match) {
         
         layerGrp.eachLayer(l => layerGrp.resetStyle(l));
         
+        currentSelectedFeature = targetLayer.feature;
+        currentSelectedLayer = targetLayer;
+        
         targetLayer.setStyle(getHoverStyle(targetLayer.feature));
-        if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
-            targetLayer.bringToFront();
-        }
         
         const name = getRegionName(targetLayer.feature);
         const parent = getRegionParent(targetLayer.feature);
         regionDetails.innerHTML = `
             <div class="region-name">${name}</div>
             ${parent ? `<div><small style="color:var(--text-muted)">in ${parent}</small></div>` : ''}
+            <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; gap: 6px;">
+                <button onclick="exportSingleRegion('png')" class="download-link" style="flex: 1; font-size: 0.72rem; padding: 4px; text-align: center; border: none; cursor: pointer; margin: 0;">Export PNG</button>
+                <button onclick="exportSingleRegion('svg')" class="download-link" style="flex: 1; font-size: 0.72rem; padding: 4px; text-align: center; border: none; cursor: pointer; margin: 0;">Export SVG</button>
+            </div>
         `;
     }
 }
@@ -704,45 +716,41 @@ document.getElementById('layer-tehsils').addEventListener('change', updateLayers
 // Init
 updateLayers();
 
-// Clean SVG Exporter (returns standalone SVG with ONLY clean presentation attributes, cropped to map elements)
-function getCleanSvgString() {
+// Clean SVG Exporter (returns standalone SVG with ONLY clean presentation attributes, cropped to target bounds)
+function getCleanSvgStringCropped(targetBounds) {
     const overlaySvg = document.querySelector('.leaflet-overlay-pane svg');
     if (!overlaySvg) return null;
     
     const svgClone = overlaySvg.cloneNode(true);
+    let bounds = targetBounds;
     
-    // Find bounds of all active features
-    let bounds = L.latLngBounds();
-    let hasActive = false;
-    
-    if (boundaryLayer && map.hasLayer(boundaryLayer)) {
-        bounds.extend(boundaryLayer.getBounds());
-        hasActive = true;
-    }
-    ['provinces', 'districts', 'tehsils'].forEach(lyr => {
-        if (geojsonLayers[lyr] && map.hasLayer(geojsonLayers[lyr])) {
-            bounds.extend(geojsonLayers[lyr].getBounds());
+    if (!bounds || !bounds.isValid()) {
+        bounds = L.latLngBounds();
+        let hasActive = false;
+        if (boundaryLayer && map.hasLayer(boundaryLayer)) {
+            bounds.extend(boundaryLayer.getBounds());
             hasActive = true;
         }
-    });
-    if (riversLayer && map.hasLayer(riversLayer)) {
-        bounds.extend(riversLayer.getBounds());
-        hasActive = true;
-    }
-    
-    if (!hasActive || !bounds.isValid()) {
-        bounds = L.latLngBounds([[23.695, 60.872], [37.098, 77.837]]); // Pakistan bbox
+        ['provinces', 'districts', 'tehsils'].forEach(lyr => {
+            if (geojsonLayers[lyr] && map.hasLayer(geojsonLayers[lyr])) {
+                bounds.extend(geojsonLayers[lyr].getBounds());
+                hasActive = true;
+            }
+        });
+        if (!hasActive || !bounds.isValid()) {
+            bounds = L.latLngBounds([[23.695, 60.872], [37.098, 77.837]]);
+        }
     }
     
     // Convert geographic bounds to Leaflet layer points
     const nw = map.latLngToLayerPoint(bounds.getNorthWest());
     const se = map.latLngToLayerPoint(bounds.getSouthEast());
     
-    const padding = 20;
+    const padding = 25;
     const x = nw.x - padding;
     const y = nw.y - padding;
-    const w = (se.x - nw.x) + (padding * 2);
-    const h = (se.y - nw.y) + (padding * 2);
+    const w = Math.max((se.x - nw.x) + (padding * 2), 50);
+    const h = Math.max((se.y - nw.y) + (padding * 2), 50);
     
     svgClone.setAttribute('viewBox', `${x} ${y} ${w} ${h}`);
     svgClone.setAttribute('width', w);
@@ -750,20 +758,18 @@ function getCleanSvgString() {
     svgClone.removeAttribute('style');
     svgClone.removeAttribute('class');
     
-    // Ensure all styles are PowerPoint compatible (no CSS variables, absolute presentation attributes)
+    // Ensure all styles are PowerPoint/Vector compatible
     const paths = svgClone.querySelectorAll('path');
     paths.forEach(path => {
         path.removeAttribute('class');
         
         const computedStyle = window.getComputedStyle(path);
-        
         let fill = path.getAttribute('fill') || path.style.fill || computedStyle.fill;
         let stroke = path.getAttribute('stroke') || path.style.stroke || computedStyle.stroke;
         let strokeWidth = path.getAttribute('stroke-width') || path.style.strokeWidth || computedStyle.strokeWidth;
         let fillOpacity = path.getAttribute('fill-opacity') || path.style.fillOpacity || computedStyle.fillOpacity;
         let strokeOpacity = path.getAttribute('stroke-opacity') || path.style.strokeOpacity || computedStyle.strokeOpacity;
         
-        // Leaflet sets interactive path fills to translucent or none
         if (fill === 'none' || fill === '' || fill === 'rgba(0, 0, 0, 0)') {
             fill = 'none';
         }
@@ -783,74 +789,89 @@ function getCleanSvgString() {
     return serializer.serializeToString(svgClone);
 }
 
-// Export Map Feature
-document.getElementById('export-png').addEventListener('click', () => {
+function exportMapCropped(bounds, filename, format) {
     loadingOverlay.classList.remove('hidden');
     setTimeout(() => {
-        const svgString = getCleanSvgString();
+        const svgString = getCleanSvgStringCropped(bounds);
         if (!svgString) {
             alert('No map elements found to export.');
             loadingOverlay.classList.add('hidden');
             return;
         }
         
-        const img = new Image();
         const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
         const URL = window.URL || window.webkitURL || window;
         const blobURL = URL.createObjectURL(svgBlob);
         
-        img.onload = function() {
-            const canvas = document.createElement('canvas');
-            // Export high-resolution PNG
-            const targetWidth = 2000;
-            const scale = targetWidth / img.width;
-            canvas.width = targetWidth;
-            canvas.height = img.height * scale;
-            
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            
-            const pngUrl = canvas.toDataURL('image/png');
+        if (format === 'svg') {
             const link = document.createElement('a');
-            link.download = 'pakistan-map.png';
-            link.href = pngUrl;
+            link.download = filename;
+            link.href = blobURL;
             link.click();
-            
-            URL.revokeObjectURL(blobURL);
+            setTimeout(() => URL.revokeObjectURL(blobURL), 100);
             loadingOverlay.classList.add('hidden');
-        };
-        img.onerror = function(err) {
-            console.error('Error drawing image for PNG download', err);
-            alert('Could not export map to PNG.');
-            loadingOverlay.classList.add('hidden');
-        };
-        img.src = blobURL;
+        } else {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                const targetWidth = 2000;
+                const scale = targetWidth / img.width;
+                canvas.width = targetWidth;
+                canvas.height = Math.max(img.height * scale, 500);
+                
+                const ctx = canvas.getContext('2d');
+                // Fill crisp dark background for standalone PNG export
+                ctx.fillStyle = '#090d16';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                
+                const pngUrl = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.download = filename;
+                link.href = pngUrl;
+                link.click();
+                
+                URL.revokeObjectURL(blobURL);
+                loadingOverlay.classList.add('hidden');
+            };
+            img.onerror = function(err) {
+                console.error('Error drawing PNG', err);
+                alert('Could not export PNG.');
+                loadingOverlay.classList.add('hidden');
+            };
+            img.src = blobURL;
+        }
     }, 100);
+}
+
+// Global Export Handlers
+document.getElementById('export-png').addEventListener('click', () => {
+    if (currentSelectedLayer) {
+        const name = getRegionName(currentSelectedFeature).replace(/[^a-zA-Z0-9]/g, '_');
+        exportMapCropped(currentSelectedLayer.getBounds(), `${name}.png`, 'png');
+    } else {
+        exportMapCropped(null, 'pakistan-map.png', 'png');
+    }
 });
 
 document.getElementById('export-svg').addEventListener('click', () => {
-    loadingOverlay.classList.remove('hidden');
-    setTimeout(() => {
-        const svgString = getCleanSvgString();
-        if (!svgString) {
-            alert('No map elements found to export.');
-            loadingOverlay.classList.add('hidden');
-            return;
-        }
-        
-        const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
-        const URL = window.URL || window.webkitURL || window;
-        const blobURL = URL.createObjectURL(svgBlob);
-        
-        const link = document.createElement('a');
-        link.download = 'pakistan-map.svg';
-        link.href = blobURL;
-        link.click();
-        
-        setTimeout(() => URL.revokeObjectURL(blobURL), 100);
-        loadingOverlay.classList.add('hidden');
-    }, 100);
+    if (currentSelectedLayer) {
+        const name = getRegionName(currentSelectedFeature).replace(/[^a-zA-Z0-9]/g, '_');
+        exportMapCropped(currentSelectedLayer.getBounds(), `${name}.svg`, 'svg');
+    } else {
+        exportMapCropped(null, 'pakistan-map.svg', 'svg');
+    }
 });
+
+// Single Region Export
+window.exportSingleRegion = function(format) {
+    if (!currentSelectedLayer) {
+        alert('Please hover or select a region first.');
+        return;
+    }
+    const name = getRegionName(currentSelectedFeature).replace(/[^a-zA-Z0-9]/g, '_');
+    exportMapCropped(currentSelectedLayer.getBounds(), `${name}.${format}`, format);
+};
 
 // Basemap Switcher Logic
 document.getElementById('basemap-select').addEventListener('change', (e) => {

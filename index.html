@@ -98,8 +98,10 @@
 
             <section class="downloads">
                 <h3>Export Map</h3>
-                <button id="export-png" class="download-link" style="width: 100%; border: none; cursor: pointer; text-align: left;">Download Map as Image (PNG)</button>
-                <button id="export-svg" class="download-link" style="width: 100%; border: none; cursor: pointer; text-align: left;">Download Map as Vector (SVG)</button>
+                <div style="display: flex; gap: 8px;">
+                    <button id="export-png" class="download-link" style="flex: 1; border: none; cursor: pointer; text-align: center; margin-bottom: 0;">Download PNG</button>
+                    <button id="export-svg" class="download-link" style="flex: 1; border: none; cursor: pointer; text-align: center; margin-bottom: 0;">Download SVG</button>
+                </div>
                 
                 <h3 style="margin-top: 20px;">Download Data</h3>
                 <a href="data/provinces.geojson" download class="download-link">Download Provinces (GeoJSON)</a>
