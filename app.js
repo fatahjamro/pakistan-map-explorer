@@ -15,14 +15,18 @@ const map = L.map('map', {
 });
 
 // Create custom panes for strict layering and clean pointer-events control
-map.createPane('provincesPane');
-map.createPane('districtsPane');
 map.createPane('tehsilsPane');
+map.createPane('districtsPane');
+map.createPane('provincesPane');
+map.createPane('riversPane');
+map.createPane('roadsPane');
 
-// Z-index: Provinces on top, then Districts, then Tehsils
-map.getPane('provincesPane').style.zIndex = 402;
-map.getPane('districtsPane').style.zIndex = 401;
+// Z-index hierarchy: Roads & Rivers on top, then Provinces, Districts, Tehsils
 map.getPane('tehsilsPane').style.zIndex = 400;
+map.getPane('districtsPane').style.zIndex = 401;
+map.getPane('provincesPane').style.zIndex = 402;
+map.getPane('riversPane').style.zIndex = 430;
+map.getPane('roadsPane').style.zIndex = 440;
 
 L.control.zoom({
     position: 'bottomright'
@@ -474,6 +478,7 @@ toggleRivers.addEventListener('change', async (e) => {
                 const data = await response.json();
                 
                 riversLayer = L.geoJSON(data, {
+                    pane: 'riversPane',
                     filter: function(feature) {
                         if (!feature.properties || !feature.properties.NAM) return false;
                         const name = feature.properties.NAM.toUpperCase();
@@ -485,9 +490,9 @@ toggleRivers.addEventListener('change', async (e) => {
                         const name = (feature.properties && feature.properties.NAM) ? feature.properties.NAM.toUpperCase() : '';
                         const isIndus = name.includes('INDUS');
                         return {
-                            color: '#38bdf8', // Bright Water Blue
-                            weight: isIndus ? 3.5 : 2.0,
-                            opacity: isIndus ? 0.95 : 0.8
+                            color: '#0284c7', // Vibrant Deep Blue
+                            weight: isIndus ? 4.0 : 2.5,
+                            opacity: 0.95
                         };
                     },
                     onEachFeature: (feature, layer) => {
@@ -528,13 +533,13 @@ if (toggleRoads) {
                     const data = await response.json();
                     
                     roadsLayer = L.geoJSON(data, {
+                        pane: 'roadsPane',
                         style: function (feature) {
                             const isMotorway = feature.properties.type === 'Motorway';
                             return {
-                                color: isMotorway ? '#f59e0b' : '#f97316', // Amber for Motorways, Orange for Highways
-                                weight: isMotorway ? 2.5 : 1.8,
-                                dashArray: isMotorway ? '6, 4' : null,
-                                opacity: 0.9
+                                color: isMotorway ? '#fbbf24' : '#f97316', // High contrast Amber Yellow for Motorways, Orange for Highways
+                                weight: isMotorway ? 3.5 : 2.5,
+                                opacity: 0.95
                             };
                         },
                         onEachFeature: (feature, layer) => {
