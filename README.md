@@ -2,6 +2,8 @@
 
 An open-source, high-precision Web GIS interactive map and open data repository for Pakistan down to **Tehsil level (ADM3)**. Enriched with official **2023 Digital Census** statistics, major rivers, capital markers, multi-level layer controls, and PowerPoint-ready vector (SVG) / image (PNG) export tools.
 
+🌐 **Live Web Application:** **[https://pakistan-map-explorer.web.app](https://pakistan-map-explorer.web.app)**
+
 <p align="center">
   <img src="assets/map-preview.png" alt="Pakistan Interactive Map Explorer" width="450" />
 </p>
