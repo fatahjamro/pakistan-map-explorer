@@ -315,3 +315,82 @@ footer {
 .leaflet-tehsils-pane.inactive-pane path {
     pointer-events: none !important;
 }
+
+/* Creator Box & Badges */
+.creator-box {
+    margin-top: 0.75rem;
+    padding: 0.6rem 0.8rem;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.78rem;
+}
+.creator-name {
+    color: var(--text-main);
+    margin-bottom: 0.4rem;
+}
+.creator-name strong {
+    color: var(--accent);
+}
+.creator-links {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+}
+.creator-link {
+    color: #94a3b8;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+.creator-link:hover {
+    color: var(--accent);
+}
+.license-badge {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+/* Commercial Customization Pitch Card */
+.commercial-card {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.08));
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 8px;
+    padding: 0.9rem;
+    margin-top: 1rem;
+}
+.card-title {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #38bdf8;
+    margin-bottom: 0.35rem;
+}
+.card-desc {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    line-height: 1.35;
+    margin-bottom: 0.75rem;
+}
+.commercial-btn {
+    display: block;
+    width: 100%;
+    text-align: center;
+    background: #2563eb;
+    color: #ffffff;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.2s ease, transform 0.1s ease;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+.commercial-btn:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+}
