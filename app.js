@@ -29,6 +29,77 @@ map.getPane('riversPane').style.zIndex = 430;
 map.getPane('roadsPane').style.zIndex = 440;
 map.getPane('roadsPane').style.pointerEvents = 'none';
 
+// Setup SVG Polygon Mask for Roads Pane to strictly clip roads inside Pakistan's boundary
+const clipSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+clipSvg.setAttribute('style', 'position: absolute; width: 0; height: 0; pointer-events: none;');
+clipSvg.innerHTML = `
+    <defs>
+        <clipPath id="pakistan-roads-clip" clipPathUnits="userSpaceOnUse">
+            <path id="pakistan-roads-clip-path"></path>
+        </clipPath>
+    </defs>
+`;
+document.body.appendChild(clipSvg);
+
+const roadsPaneEl = map.getPane('roadsPane');
+if (roadsPaneEl) {
+    roadsPaneEl.style.clipPath = 'url(#pakistan-roads-clip)';
+    roadsPaneEl.style.webkitClipPath = 'url(#pakistan-roads-clip)';
+}
+
+let cachedBoundaryGeoJSON = null;
+async function updatePakistanClipPath() {
+    if (!cachedBoundaryGeoJSON) {
+        try {
+            const res = await fetch('data/pakistan_boundary.geojson');
+            cachedBoundaryGeoJSON = await res.json();
+        } catch (e) {
+            console.error('Error fetching boundary geojson for clipping', e);
+            return;
+        }
+    }
+    
+    const clipPathEl = document.getElementById('pakistan-roads-clip-path');
+    if (!clipPathEl || !cachedBoundaryGeoJSON) return;
+    
+    let pathD = '';
+    const features = cachedBoundaryGeoJSON.features || [cachedBoundaryGeoJSON];
+    
+    features.forEach(feature => {
+        const geom = feature.geometry;
+        if (!geom) return;
+        
+        const type = geom.type;
+        const coords = geom.coordinates;
+        
+        const processPolygon = (polyCoords) => {
+            polyCoords.forEach(ring => {
+                let ringStr = '';
+                ring.forEach((coord, index) => {
+                    // lng, lat -> [coord[1], coord[0]]
+                    const point = map.latLngToLayerPoint([coord[1], coord[0]]);
+                    const prefix = index === 0 ? 'M' : 'L';
+                    ringStr += `${prefix}${point.x.toFixed(1)},${point.y.toFixed(1)} `;
+                });
+                ringStr += 'Z ';
+                pathD += ringStr;
+            });
+        };
+        
+        if (type === 'Polygon') {
+            processPolygon(coords);
+        } else if (type === 'MultiPolygon') {
+            coords.forEach(processPolygon);
+        }
+    });
+    
+    clipPathEl.setAttribute('d', pathD);
+}
+
+// Pre-fetch boundary and update clip path immediately
+updatePakistanClipPath();
+map.on('move moveend zoomend viewreset resize', updatePakistanClipPath);
+
 L.control.zoom({
     position: 'bottomright'
 }).addTo(map);
@@ -524,7 +595,7 @@ toggleRivers.addEventListener('change', async (e) => {
 let roadsLayer = null;
 const toggleRoads = document.getElementById('toggle-roads');
 if (toggleRoads) {
-    toggleRoads.addEventListener('change', (e) => {
+    toggleRoads.addEventListener('change', async (e) => {
         if (e.target.checked) {
             if (!roadsLayer) {
                 roadsLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {
@@ -535,6 +606,7 @@ if (toggleRoads) {
                 });
             }
             map.addLayer(roadsLayer);
+            await updatePakistanClipPath();
         } else {
             if (roadsLayer && map.hasLayer(roadsLayer)) {
                 map.removeLayer(roadsLayer);
