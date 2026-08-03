@@ -312,11 +312,24 @@ function zoomToFeature(e) {
 function createTooltipContent(feature) {
     const name = getRegionName(feature);
     const props = feature.properties;
+    const isTehsil = props.shapeName || props.adm3_name || props.NAME_3;
+    const isDistrict = !isTehsil && (props.adm2_name || props.NAME_2);
+    
+    const parentDistrict = props.adm2_name || props.NAME_2;
+    const parentProvince = props.adm1_name || props.NAME_1;
     const showPop = document.getElementById('toggle-population') && document.getElementById('toggle-population').checked;
+    
+    let subtextHtml = '';
+    if (isTehsil && parentDistrict) {
+        subtextHtml = `<div style="font-size: 0.78rem; color: #cbd5e1; font-weight: 400; margin-top: 2px;">${parentDistrict}</div>`;
+    } else if (isDistrict && parentProvince) {
+        subtextHtml = `<div style="font-size: 0.78rem; color: #cbd5e1; font-weight: 400; margin-top: 2px;">${parentProvince}</div>`;
+    }
     
     if (props.pop_2023 && showPop) {
         return `
             <div style="font-weight: 700; font-size: 1rem; color: var(--accent);">${name}</div>
+            ${subtextHtml}
             <div style="margin-top: 4px; padding-top: 4px; border-top: 1px solid rgba(255,255,255,0.15); font-size: 0.85rem;">
                 <div>📊 <strong>${props.pop_2023.toLocaleString()}</strong> <span style="font-size: 0.75rem; color: var(--text-muted);">people</span></div>
                 <div style="margin-top: 2px;">Density: <strong>${props.pop_density}</strong> / km²</div>
@@ -326,7 +339,13 @@ function createTooltipContent(feature) {
             </div>
         `;
     }
-    return `<strong>${name}</strong>`;
+
+    return `
+        <div style="text-align: center;">
+            <div style="font-weight: 700; font-size: 0.95rem;">${name}</div>
+            ${subtextHtml}
+        </div>
+    `;
 }
 
 function onEachFeature(feature, layer) {
