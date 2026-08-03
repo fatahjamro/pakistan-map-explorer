@@ -317,7 +317,7 @@ footer {
 }
 
 .leaflet-roads-pane {
-    filter: brightness(1.6) contrast(1.4);
+    /* Natural crisp Google Maps transparent overlay */
 }
 
 /* Creator Box & Badges */

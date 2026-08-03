@@ -30,15 +30,19 @@ map.getPane('roadsPane').style.zIndex = 500;
 map.getPane('roadsPane').style.pointerEvents = 'none';
 
 let cachedBoundaryGeoJSON = null;
-async function ensureBoundaryLoaded() {
-    if (!cachedBoundaryGeoJSON) {
-        try {
-            const res = await fetch('data/pakistan_boundary.geojson');
-            cachedBoundaryGeoJSON = await res.json();
-        } catch (e) {
-            console.error('Error fetching boundary geojson', e);
-        }
+let boundaryPromise = null;
+
+function ensureBoundaryLoaded() {
+    if (!boundaryPromise) {
+        boundaryPromise = fetch('data/pakistan_boundary.geojson')
+            .then(res => res.json())
+            .then(data => {
+                cachedBoundaryGeoJSON = data;
+                return data;
+            })
+            .catch(e => console.error('Error fetching boundary geojson', e));
     }
+    return boundaryPromise;
 }
 ensureBoundaryLoaded();
 
@@ -52,25 +56,30 @@ const BoundedTileLayer = L.TileLayer.extend({
 
         const ctx = tile.getContext('2d');
         const img = new Image();
-        img.crossOrigin = 'anonymous';
 
-        img.onload = () => {
+        const drawTile = () => {
             ctx.save();
-            
             if (cachedBoundaryGeoJSON) {
                 ctx.beginPath();
-                const tileNwPoint = coords.scaleBy(tileSize);
+                const tileNwPoint = L.point(coords.x * tileSize.x, coords.y * tileSize.y);
                 const zoom = coords.z;
-                const features = cachedBoundaryGeoJSON.features || [cachedBoundaryGeoJSON];
                 
-                features.forEach(feature => {
-                    const geom = feature.geometry;
+                const extractGeoms = (data) => {
+                    if (!data) return [];
+                    if (data.type === 'FeatureCollection') return (data.features || []).map(f => f.geometry).filter(Boolean);
+                    if (data.type === 'GeometryCollection') return data.geometries || [];
+                    if (data.type === 'Feature') return data.geometry ? [data.geometry] : [];
+                    return [data];
+                };
+
+                const geoms = extractGeoms(cachedBoundaryGeoJSON);
+                
+                geoms.forEach(geom => {
                     if (!geom) return;
-                    
                     const processRing = (ring) => {
                         ring.forEach((pt, i) => {
                             // pt is [lng, lat]
-                            const p = this._map.project(L.latLng(pt[1], pt[0]), zoom)._subtract(tileNwPoint);
+                            const p = L.CRS.EPSG3857.latLngToPoint(L.latLng(pt[1], pt[0]), zoom)._subtract(tileNwPoint);
                             if (i === 0) ctx.moveTo(p.x, p.y);
                             else ctx.lineTo(p.x, p.y);
                         });
@@ -87,6 +96,14 @@ const BoundedTileLayer = L.TileLayer.extend({
             ctx.drawImage(img, 0, 0, tileSize.x, tileSize.y);
             ctx.restore();
             done(null, tile);
+        };
+
+        img.onload = () => {
+            if (cachedBoundaryGeoJSON) {
+                drawTile();
+            } else {
+                ensureBoundaryLoaded().then(drawTile);
+            }
         };
 
         img.onerror = (err) => done(err, tile);
@@ -601,12 +618,10 @@ if (toggleRoads) {
         if (e.target.checked) {
             await ensureBoundaryLoaded();
             if (!roadsLayer) {
-                roadsLayer = new BoundedTileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
-                    subdomains: 'abcd',
+                roadsLayer = new BoundedTileLayer('https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}', {
                     maxZoom: 20,
                     pane: 'roadsPane',
-                    opacity: 1.0,
-                    crossOrigin: true
+                    opacity: 1.0
                 });
             }
             map.addLayer(roadsLayer);
