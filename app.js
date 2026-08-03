@@ -716,83 +716,124 @@ document.getElementById('layer-tehsils').addEventListener('change', updateLayers
 // Init
 updateLayers();
 
-// Clean SVG Exporter (returns standalone SVG with ONLY clean presentation attributes, cropped to target bounds)
-function getCleanSvgStringCropped(targetBounds) {
-    const overlaySvg = document.querySelector('.leaflet-overlay-pane svg');
-    if (!overlaySvg) return null;
+// PowerPoint & Vector Graphics Compatible Standalone SVG Generator
+function generatePowerPointSvg(singleFeature) {
+    const active = getActiveLayer() || 'provinces';
+    let features = [];
+    let layerTitle = 'Pakistan Map';
     
-    const svgClone = overlaySvg.cloneNode(true);
-    let bounds = targetBounds;
-    
-    if (!bounds || !bounds.isValid()) {
-        bounds = L.latLngBounds();
-        let hasActive = false;
-        if (boundaryLayer && map.hasLayer(boundaryLayer)) {
-            bounds.extend(boundaryLayer.getBounds());
-            hasActive = true;
-        }
-        ['provinces', 'districts', 'tehsils'].forEach(lyr => {
-            if (geojsonLayers[lyr] && map.hasLayer(geojsonLayers[lyr])) {
-                bounds.extend(geojsonLayers[lyr].getBounds());
-                hasActive = true;
-            }
-        });
-        if (!hasActive || !bounds.isValid()) {
-            bounds = L.latLngBounds([[23.695, 60.872], [37.098, 77.837]]);
+    if (singleFeature) {
+        features = [singleFeature];
+        layerTitle = getRegionName(singleFeature);
+    } else {
+        if (cachedData[active]) {
+            features = cachedData[active].features;
+            layerTitle = `Pakistan ${active.toUpperCase()} Map`;
+        } else if (cachedData['provinces']) {
+            features = cachedData['provinces'].features;
         }
     }
     
-    // Convert geographic bounds to Leaflet layer points
-    const nw = map.latLngToLayerPoint(bounds.getNorthWest());
-    const se = map.latLngToLayerPoint(bounds.getSouthEast());
+    if (!features || features.length === 0) return null;
+
+    let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
     
-    const padding = 25;
-    const x = nw.x - padding;
-    const y = nw.y - padding;
-    const w = Math.max((se.x - nw.x) + (padding * 2), 50);
-    const h = Math.max((se.y - nw.y) + (padding * 2), 50);
-    
-    svgClone.setAttribute('viewBox', `${x} ${y} ${w} ${h}`);
-    svgClone.setAttribute('width', w);
-    svgClone.setAttribute('height', h);
-    svgClone.removeAttribute('style');
-    svgClone.removeAttribute('class');
-    
-    // Ensure all styles are PowerPoint/Vector compatible
-    const paths = svgClone.querySelectorAll('path');
-    paths.forEach(path => {
-        path.removeAttribute('class');
-        
-        const computedStyle = window.getComputedStyle(path);
-        let fill = path.getAttribute('fill') || path.style.fill || computedStyle.fill;
-        let stroke = path.getAttribute('stroke') || path.style.stroke || computedStyle.stroke;
-        let strokeWidth = path.getAttribute('stroke-width') || path.style.strokeWidth || computedStyle.strokeWidth;
-        let fillOpacity = path.getAttribute('fill-opacity') || path.style.fillOpacity || computedStyle.fillOpacity;
-        let strokeOpacity = path.getAttribute('stroke-opacity') || path.style.strokeOpacity || computedStyle.strokeOpacity;
-        
-        if (fill === 'none' || fill === '' || fill === 'rgba(0, 0, 0, 0)') {
-            fill = 'none';
+    const scanCoords = (coords) => {
+        if (typeof coords[0] === 'number') {
+            const [lng, lat] = coords;
+            if (lng < minLng) minLng = lng;
+            if (lng > maxLng) maxLng = lng;
+            if (lat < minLat) minLat = lat;
+            if (lat > maxLat) maxLat = lat;
+        } else {
+            coords.forEach(scanCoords);
         }
+    };
+    features.forEach(f => scanCoords(f.geometry.coordinates));
+
+    const targetWidth = 1920;
+    const targetHeight = 1080;
+    const padding = 50;
+    
+    const widthRange = Math.max(maxLng - minLng, 0.01);
+    const heightRange = Math.max(maxLat - minLat, 0.01);
+    
+    const latScale = 1.15;
+    const scaleX = (targetWidth - padding * 2) / widthRange;
+    const scaleY = (targetHeight - padding * 2) / (heightRange * latScale);
+    const scale = Math.min(scaleX, scaleY);
+
+    const projectPt = (lng, lat) => {
+        const x = padding + (lng - minLng) * scale;
+        const y = targetHeight - (padding + (lat - minLat) * scale * latScale);
+        return `${x.toFixed(2)},${y.toFixed(2)}`;
+    };
+
+    let svgContent = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+    svgContent += `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${targetWidth} ${targetHeight}" width="${targetWidth}" height="${targetHeight}">\n`;
+    svgContent += `  <style>\n`;
+    svgContent += `    .region-shape { stroke-linejoin: round; stroke-linecap: round; cursor: pointer; }\n`;
+    svgContent += `  </style>\n`;
+    svgContent += `  <rect width="100%" height="100%" fill="#090d16" />\n`;
+    svgContent += `  <g id="${layerTitle.replace(/[^a-zA-Z0-9]/g, '_')}">\n`;
+
+    features.forEach(f => {
+        const name = getRegionName(f);
+        const color = getFeatureColor(f);
+        const id = name.replace(/[^a-zA-Z0-9]/g, '_');
         
-        path.setAttribute('fill', fill);
-        path.setAttribute('stroke', stroke);
-        if (strokeWidth) {
-            path.setAttribute('stroke-width', strokeWidth.replace('px', ''));
-        }
-        if (fillOpacity) path.setAttribute('fill-opacity', fillOpacity);
-        if (strokeOpacity) path.setAttribute('stroke-opacity', strokeOpacity);
+        let pathD = '';
+        const geom = f.geometry;
+        const processPolygon = (polyCoords) => {
+            polyCoords.forEach(ring => {
+                let ringD = '';
+                ring.forEach((pt, i) => {
+                    const prefix = i === 0 ? 'M' : 'L';
+                    ringD += `${prefix}${projectPt(pt[0], pt[1])} `;
+                });
+                ringD += 'Z ';
+                pathD += ringD;
+            });
+        };
         
-        path.removeAttribute('style');
+        if (geom.type === 'Polygon') processPolygon(geom.coordinates);
+        else if (geom.type === 'MultiPolygon') geom.coordinates.forEach(processPolygon);
+
+        svgContent += `    <path id="${id}" data-name="${name}" class="region-shape" d="${pathD}" fill="${color}" fill-opacity="0.55" stroke="#ffffff" stroke-width="1.2" stroke-opacity="0.9">\n`;
+        svgContent += `      <title>${name}</title>\n`;
+        svgContent += `    </path>\n`;
     });
-    
-    const serializer = new XMLSerializer();
-    return serializer.serializeToString(svgClone);
+
+    if (!singleFeature && cachedData['pakistan_boundary']) {
+        let bD = '';
+        const bGeom = cachedData['pakistan_boundary'].features[0].geometry;
+        const processBPoly = (polyCoords) => {
+            polyCoords.forEach(ring => {
+                let ringD = '';
+                ring.forEach((pt, i) => {
+                    const prefix = i === 0 ? 'M' : 'L';
+                    ringD += `${prefix}${projectPt(pt[0], pt[1])} `;
+                });
+                ringD += 'Z ';
+                bD += ringD;
+            });
+        };
+        if (bGeom.type === 'Polygon') processBPoly(bGeom.coordinates);
+        else if (bGeom.type === 'MultiPolygon') bGeom.coordinates.forEach(processBPoly);
+
+        svgContent += `    <path id="Pakistan_International_Boundary" d="${bD}" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-opacity="1.0" />\n`;
+    }
+
+    svgContent += `  </g>\n`;
+    svgContent += `</svg>`;
+
+    return svgContent;
 }
 
-function exportMapCropped(bounds, filename, format) {
+function exportVectorMap(filename, format, singleFeature = null) {
     loadingOverlay.classList.remove('hidden');
     setTimeout(() => {
-        const svgString = getCleanSvgStringCropped(bounds);
+        const svgString = generatePowerPointSvg(singleFeature);
         if (!svgString) {
             alert('No map elements found to export.');
             loadingOverlay.classList.add('hidden');
@@ -820,7 +861,6 @@ function exportMapCropped(bounds, filename, format) {
                 canvas.height = Math.max(img.height * scale, 500);
                 
                 const ctx = canvas.getContext('2d');
-                // Fill crisp dark background for standalone PNG export
                 ctx.fillStyle = '#090d16';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
@@ -846,31 +886,23 @@ function exportMapCropped(bounds, filename, format) {
 
 // Global Export Handlers
 document.getElementById('export-png').addEventListener('click', () => {
-    if (currentSelectedLayer) {
-        const name = getRegionName(currentSelectedFeature).replace(/[^a-zA-Z0-9]/g, '_');
-        exportMapCropped(currentSelectedLayer.getBounds(), `${name}.png`, 'png');
-    } else {
-        exportMapCropped(null, 'pakistan-map.png', 'png');
-    }
+    const active = getActiveLayer() || 'map';
+    exportVectorMap(`pakistan-${active}-map.png`, 'png');
 });
 
 document.getElementById('export-svg').addEventListener('click', () => {
-    if (currentSelectedLayer) {
-        const name = getRegionName(currentSelectedFeature).replace(/[^a-zA-Z0-9]/g, '_');
-        exportMapCropped(currentSelectedLayer.getBounds(), `${name}.svg`, 'svg');
-    } else {
-        exportMapCropped(null, 'pakistan-map.svg', 'svg');
-    }
+    const active = getActiveLayer() || 'map';
+    exportVectorMap(`pakistan-${active}-map.svg`, 'svg');
 });
 
 // Single Region Export
 window.exportSingleRegion = function(format) {
-    if (!currentSelectedLayer) {
+    if (!currentSelectedFeature) {
         alert('Please hover or select a region first.');
         return;
     }
     const name = getRegionName(currentSelectedFeature).replace(/[^a-zA-Z0-9]/g, '_');
-    exportMapCropped(currentSelectedLayer.getBounds(), `${name}.${format}`, format);
+    exportVectorMap(`${name}.${format}`, format, currentSelectedFeature);
 };
 
 // Basemap Switcher Logic
