@@ -27,6 +27,7 @@ map.getPane('districtsPane').style.zIndex = 401;
 map.getPane('provincesPane').style.zIndex = 402;
 map.getPane('riversPane').style.zIndex = 430;
 map.getPane('roadsPane').style.zIndex = 440;
+map.getPane('roadsPane').style.pointerEvents = 'none';
 
 L.control.zoom({
     position: 'bottomright'
@@ -523,43 +524,17 @@ toggleRivers.addEventListener('change', async (e) => {
 let roadsLayer = null;
 const toggleRoads = document.getElementById('toggle-roads');
 if (toggleRoads) {
-    toggleRoads.addEventListener('change', async (e) => {
+    toggleRoads.addEventListener('change', (e) => {
         if (e.target.checked) {
             if (!roadsLayer) {
-                loadingOverlay.classList.remove('hidden');
-                try {
-                    const response = await fetch('data/roads.geojson');
-                    if (!response.ok) throw new Error('Error loading roads');
-                    const data = await response.json();
-                    
-                    roadsLayer = L.geoJSON(data, {
-                        pane: 'roadsPane',
-                        style: function (feature) {
-                            const isMotorway = feature.properties.type === 'Motorway';
-                            return {
-                                color: isMotorway ? '#fbbf24' : '#f97316', // High contrast Amber Yellow for Motorways, Orange for Highways
-                                weight: isMotorway ? 3.5 : 2.5,
-                                opacity: 0.95
-                            };
-                        },
-                        onEachFeature: (feature, layer) => {
-                            if (feature.properties && feature.properties.name) {
-                                layer.bindTooltip(`🛣️ ${feature.properties.name}`, {
-                                    sticky: true,
-                                    direction: 'auto',
-                                    className: 'custom-tooltip'
-                                });
-                            }
-                        }
-                    });
-                } catch (err) {
-                    console.error(err);
-                    e.target.checked = false;
-                } finally {
-                    loadingOverlay.classList.add('hidden');
-                }
+                roadsLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}', {
+                    maxZoom: 20,
+                    pane: 'roadsPane',
+                    opacity: 0.85,
+                    crossOrigin: true
+                });
             }
-            if (roadsLayer) map.addLayer(roadsLayer);
+            map.addLayer(roadsLayer);
         } else {
             if (roadsLayer && map.hasLayer(roadsLayer)) {
                 map.removeLayer(roadsLayer);
