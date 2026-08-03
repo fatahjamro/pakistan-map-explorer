@@ -25,8 +25,8 @@ map.createPane('roadsPane');
 map.getPane('tehsilsPane').style.zIndex = 400;
 map.getPane('districtsPane').style.zIndex = 401;
 map.getPane('provincesPane').style.zIndex = 402;
-map.getPane('riversPane').style.zIndex = 430;
-map.getPane('roadsPane').style.zIndex = 440;
+map.getPane('riversPane').style.zIndex = 480;
+map.getPane('roadsPane').style.zIndex = 500;
 map.getPane('roadsPane').style.pointerEvents = 'none';
 
 let cachedBoundaryGeoJSON = null;
@@ -253,13 +253,19 @@ function getRegionParent(feature) {
     return parents.length > 0 ? parents.join(', ') : '';
 }
 
-// Interaction Handlers
+// Interaction Handlers// Z-index hierarchy: Roads & Rivers on top, then Provinces, Districts, Tehsils
+map.getPane('tehsilsPane').style.zIndex = 400;
+map.getPane('districtsPane').style.zIndex = 401;
+map.getPane('provincesPane').style.zIndex = 402;
+map.getPane('riversPane').style.zIndex = 480;
+map.getPane('roadsPane').style.zIndex = 500;
+map.getPane('roadsPane').style.pointerEvents = 'none';
+
+// Helper functions & state
+
 function highlightFeature(e) {
     const layer = e.target;
     layer.setStyle(getHoverStyle(layer.feature));
-    if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
-        layer.bringToFront();
-    }
     
     // Update Info Panel (Keep clean & compact)
     const name = getRegionName(layer.feature);
@@ -595,10 +601,11 @@ if (toggleRoads) {
         if (e.target.checked) {
             await ensureBoundaryLoaded();
             if (!roadsLayer) {
-                roadsLayer = new BoundedTileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {
-                    maxZoom: 19,
+                roadsLayer = new BoundedTileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
+                    subdomains: 'abcd',
+                    maxZoom: 20,
                     pane: 'roadsPane',
-                    opacity: 0.9,
+                    opacity: 1.0,
                     crossOrigin: true
                 });
             }

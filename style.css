@@ -316,6 +316,10 @@ footer {
     pointer-events: none !important;
 }
 
+.leaflet-roads-pane {
+    filter: brightness(1.6) contrast(1.4);
+}
+
 /* Creator Box & Badges */
 .creator-box {
     margin-top: 0.75rem;
