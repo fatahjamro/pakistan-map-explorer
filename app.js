@@ -181,9 +181,11 @@ function getFeatureColor(feature) {
     // Explicit color mapping to ensure high contrast and prevent collisions
     if (name.includes('punjab')) return '#3b82f6';             // Blue
     if (name.includes('sindh')) return '#ef4444';              // Red
-    if (name.includes('khyber') || name.includes('kpk')) return '#f97316'; // Bright Orange (contrasts with Violet AJK)
+    if (name.includes('khyber') || name.includes('kpk')) return '#f97316'; // Bright Orange
     if (name.includes('balochistan')) return '#10b981';        // Emerald
-    if (name.includes('kashmir') || name.includes('ajk')) return '#8b5cf6'; // Violet
+    if (name.includes('azad') || name.includes('ajk')) return '#8b5cf6'; // Violet for Azad Kashmir
+    if (name.includes('disputed') || name.includes('jammu')) return '#94a3b8'; // Greyish Slate for Jammu & Kashmir
+    if (name.includes('kashmir')) return '#8b5cf6'; // Fallback Kashmir Violet
     if (name.includes('gilgit') || name.includes('baltistan')) return '#ec4899'; // Pink
     if (name.includes('islamabad') || name.includes('ict')) return '#06b6d4'; // Cyan
     
@@ -440,7 +442,7 @@ async function loadMapData(layerName) {
 
     loadingOverlay.classList.remove('hidden');
     try {
-        let url = `data/${layerName}.geojson`;
+        let url = `data/${layerName}.geojson?v=${Date.now()}`;
         if (!cachedData[layerName]) {
             const response = await fetch(url);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -476,7 +478,7 @@ async function updateLayers() {
     // Always ensure Pakistan boundary is loaded and shown
     if (!boundaryLayer) {
         try {
-            const response = await fetch('data/pakistan_boundary.geojson');
+            const response = await fetch(`data/pakistan_boundary.geojson?v=${Date.now()}`);
             const data = await response.json();
             boundaryLayer = L.geoJSON(data, {
                 style: {
