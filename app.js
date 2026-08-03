@@ -29,76 +29,72 @@ map.getPane('riversPane').style.zIndex = 430;
 map.getPane('roadsPane').style.zIndex = 440;
 map.getPane('roadsPane').style.pointerEvents = 'none';
 
-// Setup SVG Polygon Mask for Roads Pane to strictly clip roads inside Pakistan's boundary
-const clipSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-clipSvg.setAttribute('style', 'position: absolute; width: 0; height: 0; pointer-events: none;');
-clipSvg.innerHTML = `
-    <defs>
-        <clipPath id="pakistan-roads-clip" clipPathUnits="userSpaceOnUse">
-            <path id="pakistan-roads-clip-path"></path>
-        </clipPath>
-    </defs>
-`;
-document.body.appendChild(clipSvg);
-
-const roadsPaneEl = map.getPane('roadsPane');
-if (roadsPaneEl) {
-    roadsPaneEl.style.clipPath = 'url(#pakistan-roads-clip)';
-    roadsPaneEl.style.webkitClipPath = 'url(#pakistan-roads-clip)';
-}
-
 let cachedBoundaryGeoJSON = null;
-async function updatePakistanClipPath() {
+async function ensureBoundaryLoaded() {
     if (!cachedBoundaryGeoJSON) {
         try {
             const res = await fetch('data/pakistan_boundary.geojson');
             cachedBoundaryGeoJSON = await res.json();
         } catch (e) {
-            console.error('Error fetching boundary geojson for clipping', e);
-            return;
+            console.error('Error fetching boundary geojson', e);
         }
     }
-    
-    const clipPathEl = document.getElementById('pakistan-roads-clip-path');
-    if (!clipPathEl || !cachedBoundaryGeoJSON) return;
-    
-    let pathD = '';
-    const features = cachedBoundaryGeoJSON.features || [cachedBoundaryGeoJSON];
-    
-    features.forEach(feature => {
-        const geom = feature.geometry;
-        if (!geom) return;
-        
-        const type = geom.type;
-        const coords = geom.coordinates;
-        
-        const processPolygon = (polyCoords) => {
-            polyCoords.forEach(ring => {
-                let ringStr = '';
-                ring.forEach((coord, index) => {
-                    // lng, lat -> [coord[1], coord[0]]
-                    const point = map.latLngToLayerPoint([coord[1], coord[0]]);
-                    const prefix = index === 0 ? 'M' : 'L';
-                    ringStr += `${prefix}${point.x.toFixed(1)},${point.y.toFixed(1)} `;
-                });
-                ringStr += 'Z ';
-                pathD += ringStr;
-            });
-        };
-        
-        if (type === 'Polygon') {
-            processPolygon(coords);
-        } else if (type === 'MultiPolygon') {
-            coords.forEach(processPolygon);
-        }
-    });
-    
-    clipPathEl.setAttribute('d', pathD);
 }
+ensureBoundaryLoaded();
 
-// Pre-fetch boundary and update clip path immediately
-updatePakistanClipPath();
-map.on('move moveend zoomend viewreset resize', updatePakistanClipPath);
+// Custom TileLayer that clips tile contents natively inside Pakistan's boundary polygon
+const BoundedTileLayer = L.TileLayer.extend({
+    createTile: function (coords, done) {
+        const tile = document.createElement('canvas');
+        const tileSize = this.getTileSize();
+        tile.width = tileSize.x;
+        tile.height = tileSize.y;
+
+        const ctx = tile.getContext('2d');
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+
+        img.onload = () => {
+            ctx.save();
+            
+            if (cachedBoundaryGeoJSON) {
+                ctx.beginPath();
+                const tileNwPoint = coords.scaleBy(tileSize);
+                const zoom = coords.z;
+                const features = cachedBoundaryGeoJSON.features || [cachedBoundaryGeoJSON];
+                
+                features.forEach(feature => {
+                    const geom = feature.geometry;
+                    if (!geom) return;
+                    
+                    const processRing = (ring) => {
+                        ring.forEach((pt, i) => {
+                            // pt is [lng, lat]
+                            const p = this._map.project(L.latLng(pt[1], pt[0]), zoom)._subtract(tileNwPoint);
+                            if (i === 0) ctx.moveTo(p.x, p.y);
+                            else ctx.lineTo(p.x, p.y);
+                        });
+                        ctx.closePath();
+                    };
+                    
+                    if (geom.type === 'Polygon') geom.coordinates.forEach(processRing);
+                    else if (geom.type === 'MultiPolygon') geom.coordinates.forEach(poly => poly.forEach(processRing));
+                });
+                
+                ctx.clip();
+            }
+
+            ctx.drawImage(img, 0, 0, tileSize.x, tileSize.y);
+            ctx.restore();
+            done(null, tile);
+        };
+
+        img.onerror = (err) => done(err, tile);
+        img.src = this.getTileUrl(coords);
+
+        return tile;
+    }
+});
 
 L.control.zoom({
     position: 'bottomright'
@@ -597,8 +593,9 @@ const toggleRoads = document.getElementById('toggle-roads');
 if (toggleRoads) {
     toggleRoads.addEventListener('change', async (e) => {
         if (e.target.checked) {
+            await ensureBoundaryLoaded();
             if (!roadsLayer) {
-                roadsLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {
+                roadsLayer = new BoundedTileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {
                     maxZoom: 19,
                     pane: 'roadsPane',
                     opacity: 0.9,
@@ -606,7 +603,6 @@ if (toggleRoads) {
                 });
             }
             map.addLayer(roadsLayer);
-            await updatePakistanClipPath();
         } else {
             if (roadsLayer && map.hasLayer(roadsLayer)) {
                 map.removeLayer(roadsLayer);
